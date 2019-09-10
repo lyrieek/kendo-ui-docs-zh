@@ -8,6 +8,60 @@
 	<meta name="description" content="Description">
 	<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
 	<link rel="stylesheet" href="//unpkg.com/docsify/lib/themes/vue.css">
+	<style type="text/css">
+		.docsify-copy-code-button,
+		.docsify-copy-code-button span {
+			cursor: pointer;
+			transition: all 0.25s ease;
+		}
+
+		.docsify-copy-code-button {
+			position: absolute;
+			z-index: 1;
+			top: 0;
+			right: 0;
+			overflow: visible;
+			padding: 0.65em 0.8em;
+			border: 0;
+			border-radius: 0;
+			outline: 0;
+			font-size: 1em;
+			background: #808080;
+			background: var(--theme-color, #808080);
+			color: #fff;
+			opacity: 0;
+		}
+
+		.docsify-copy-code-button span {
+			border-radius: 3px;
+			background: inherit;
+			pointer-events: none;
+		}
+
+		.docsify-copy-code-button .error,
+		.docsify-copy-code-button .success {
+			position: absolute;
+			z-index: -100;
+			top: 50%;
+			left: 0;
+			padding: 0.5em 0.65em;
+			font-size: 0.825em;
+			opacity: 0;
+			transform: translate(0, -50%);
+		}
+
+		.docsify-copy-code-button.error .error,
+		.docsify-copy-code-button.success .success {
+			opacity: 1;
+			transform: translate(-115%, -50%);
+		}
+
+		.docsify-copy-code-button:focus,
+		pre:hover .docsify-copy-code-button {
+			opacity: 1;
+		}
+
+	</style>
 </head>
 
 <body>
@@ -24,12 +78,83 @@
 				depth: 2
 			},
 			loadSidebar: true,
-			subMaxLevel: 2
+			subMaxLevel: 2,
+			plugins: [function(hook, vm) {
+				hook.doneEach(function() {
+					const targetElms = Array.apply(null, document.querySelectorAll('pre[data-lang]'));
+					const i18n = {
+						buttonText: 'Copy to clipboard',
+						errorText: 'Error',
+						successText: 'Copied'
+					};
+
+					const template = [
+						'<button class="docsify-copy-code-button">',
+						`<span class="label">${i18n.buttonText}</span>`,
+						`<span class="error">${i18n.errorText}</span>`,
+						`<span class="success">${i18n.successText}</span>`,
+						'</button>'
+					].join('');
+
+					targetElms.forEach(elm => {
+						elm.insertAdjacentHTML('beforeend', template);
+					});
+				});
+
+				hook.mounted(function() {
+					const listenerHost = document.querySelector('.content');
+
+					listenerHost.addEventListener('click', function(evt) {
+						const isCopyCodeButton = evt.target.classList.contains('docsify-copy-code-button');
+
+						if (isCopyCodeButton) {
+							const buttonElm = evt.target.tagName === 'BUTTON' ? evt.target : evt.target.parentNode;
+							const range = document.createRange();
+							const preElm = buttonElm.parentNode;
+							const codeElm = preElm.querySelector('code');
+
+							let selection = window.getSelection();
+
+							range.selectNode(codeElm);
+							selection.removeAllRanges();
+							selection.addRange(range);
+
+							try {
+								// Copy selected text
+								const successful = document.execCommand('copy');
+
+								if (successful) {
+									buttonElm.classList.add('success');
+									setTimeout(function() {
+										buttonElm.classList.remove('success');
+									}, 1000);
+								}
+							} catch (err) {
+								// eslint-disable-next-line
+								console.error(`docsify-copy-code: ${err}`);
+
+								buttonElm.classList.add('error');
+								setTimeout(function() {
+									buttonElm.classList.remove('error');
+								}, 1000);
+							}
+
+							selection = window.getSelection();
+
+							if (typeof selection.removeRange === 'function') {
+								selection.removeRange(range);
+							} else if (typeof selection.removeAllRanges === 'function') {
+								selection.removeAllRanges();
+							}
+						}
+					});
+				});
+			}]
 		}
 
 	</script>
-  <script src="//unpkg.com/docsify/lib/docsify.min.js"></script>
-  <script src="//unpkg.com/docsify/lib/plugins/search.js"></script>
+	<script src="//unpkg.com/docsify/lib/docsify.min.js"></script>
+	<script src="//unpkg.com/docsify/lib/plugins/search.js"></script>
 
 </body>
 
